@@ -2,18 +2,18 @@ import subprocess
 import os
 import re
 
-# Σταθεροί συνολικοί πόροι (Total Cores)
-TOTAL_CORES = 8 
+# --- ΑΛΛΑΓΗ: Τρέχουμε μόνο 4 συνολικά (όσοι οι φυσικοί πυρήνες) ---
+# Έτσι αποφεύγουμε το μπούκωμα (oversubscription) και βλέπουμε την πραγματική ταχύτητα
+TOTAL_CORES = 4 
 N = 4096
 SPARSITY = 0.95
 ITERS = 20
 
-# Συνδυασμοί (MPI Ranks, OpenMP Threads) ώστε Ranks * Threads = TOTAL_CORES
+# Συνδυασμοί που αθροίζουν σε 4
 CONFIGS = [
-    (8, 1), # Pure MPI
-    (4, 2), # Hybrid
-    (2, 4), # Hybrid
-    (1, 8)  # Almost pure OpenMP (μέσα σε 1 MPI rank)
+    (4, 1), # Pure MPI (4 procs)
+    (2, 2), # Hybrid (2 procs x 2 threads)
+    (1, 4)  # Pure OMP (1 proc x 4 threads)
 ]
 
 def compile_code():
@@ -22,39 +22,32 @@ def compile_code():
 
 def run_experiments():
     print(f"{'Ranks':<6} | {'Threads':<8} | {'Time (Calc)':<12} | {'Description'}")
-    print("-" * 50)
+    print("-" * 55)
 
     for ranks, threads in CONFIGS:
-        # Ρύθμιση περιβάλλοντος για OpenMP
         env = os.environ.copy()
         env["OMP_NUM_THREADS"] = str(threads)
         
-        # Εντολή εκτέλεσης
-        # ΣΗΜΕΙΩΣΗ: Προσθέτουμε --oversubscribe αν τρέχουμε σε μηχάνημα με λίγους πυρήνες
-        # και --map-by node:PE=X για σωστή κατανομή σε clusters (advanced), 
-        # αλλά για απλή εργαστηριακή άσκηση αρκεί το βασικό:
+        # Αφαιρούμε το --oversubscribe γιατί τώρα είμαστε εντός ορίων (4 cores)
+        # Κρατάμε το --bind-to none για ασφάλεια
         cmd = [
             "mpirun", 
-            "--oversubscribe",   # Λύνει το FAILED στα 8 ranks
-            "--bind-to", "none", # Λύνει το πρόβλημα αργής ταχύτητας (ελευθερώνει τα threads)
+            "--bind-to", "none",
             "-np", str(ranks), 
             "./hybrid_spmv", 
             str(N), str(SPARSITY), str(ITERS)
         ]
-            
-
+        
         try:
             res = subprocess.run(cmd, capture_output=True, text=True, env=env, check=True)
-            
-            # Parsing αποτελέσματος
             match = re.search(r"Time_Hybrid_Calc:\s+([0-9\.]+)", res.stdout)
             time_val = float(match.group(1)) if match else 0.0
             
             desc = "Pure MPI" if threads == 1 else ("Pure OMP" if ranks == 1 else "Hybrid")
             print(f"{ranks:<6} | {threads:<8} | {time_val:.6f}     | {desc}")
             
-        except subprocess.CalledProcessError as e:
-            print(f"{ranks:<6} | {threads:<8} | FAILED       | Check MPI setup")
+        except subprocess.CalledProcessError:
+            print(f"{ranks:<6} | {threads:<8} | FAILED       | Check setup")
 
 if __name__ == "__main__":
     compile_code()
