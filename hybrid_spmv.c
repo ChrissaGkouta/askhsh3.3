@@ -83,8 +83,8 @@ int main(int argc, char *argv[]) {
     iterations = atoi(argv[3]);
 
     // Timers
-    double t_start_total, t_end_total;
-    double t_calc_start, t_calc_end;
+    double t_start_total = 0.0, t_end_total = 0.0;
+    double t_calc_start = 0.0, t_calc_end = 0.0;
 
     // Data Structures
     int *dense_matrix = NULL;
