@@ -33,8 +33,8 @@ def run_experiments():
         # ΣΗΜΕΙΩΣΗ: Προσθέτουμε --oversubscribe αν τρέχουμε σε μηχάνημα με λίγους πυρήνες
         # και --map-by node:PE=X για σωστή κατανομή σε clusters (advanced), 
         # αλλά για απλή εργαστηριακή άσκηση αρκεί το βασικό:
-        cmd = ["mpirun", "--oversubscribe", "-np", str(ranks), "./hybrid_spmv", str(N), str(SPARSITY), str(ITERS)]
-        
+        cmd = ["mpirun", "--bind-to", "none", "-np", str(ranks), "./hybrid_spmv", str(N), str(SPARSITY), str(ITERS)]
+
         try:
             res = subprocess.run(cmd, capture_output=True, text=True, env=env, check=True)
             
